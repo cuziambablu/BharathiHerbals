@@ -36,6 +36,12 @@ export default function LoginPage() {
     setLoading(true);
     console.log("🚀 EMERGENCY AUTH: Starting direct login for", form.email);
     
+    if (!supabase) {
+      showToast("CRITICAL: Supabase Keys missing in Vercel Dashboard!", "error");
+      setLoading(false);
+      return;
+    }
+
     try {
       // DIRECT LOGIN - Bypassing AuthContext for maximum stability
       const { data, error } = await supabase.auth.signInWithPassword({
