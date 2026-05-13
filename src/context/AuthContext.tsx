@@ -60,6 +60,7 @@ interface AuthContextType {
   allOrders: Order[];
   allUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -202,6 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const adminLogin = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { success: false, error: error.message };
+      
+      // Check if user is actually an admin
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user?.id).single();
+      if (profile?.role !== 'admin') {
+        await supabase.auth.signOut();
+        return { success: false, error: "Unauthorized: Admin access required." };
+      }
+
+      if (data.user) fetchUserData(data.user);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
   const signup = async (data: { name: string; email: string; phone: string; password: string }) => {
     try {
       const { data: authData, error } = await supabase.auth.signUp({
@@ -305,7 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user, isLoggedIn: !!user, isAdmin: user?.role === "admin",
       addresses, orders, allOrders, allUsers,
-      login, signup, logout, updateProfile,
+      login, adminLogin, signup, logout, updateProfile,
       addAddress, removeAddress, setDefaultAddress,
       addOrder, updateOrderStatus, notifications: [], clearNotification: () => {},
       loading
