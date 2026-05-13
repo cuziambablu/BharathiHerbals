@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profile?.addresses) setAddresses(profile.addresses);
 
       // Background fetches - don't block
-      supabase.from('orders').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).then(({ data }) => {
+      supabase.from('orders').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
         if (data) setOrders(data.map((o: any) => ({
           id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
           paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address
@@ -103,13 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (userData.role === 'admin') {
-        supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+        supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
           if (data) setAllOrders(data.map((o: any) => ({
             id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
             paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
           })));
         });
-        supabase.from('profiles').select('*').then(({ data }) => {
+        supabase.from('profiles').select('*').then(({ data }: { data: any }) => {
           if (data) setAllUsers(data.map((p: any) => ({
             id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
           })));
