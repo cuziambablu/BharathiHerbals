@@ -42,7 +42,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="fixed inset-0 z-[999999999] bg-[#0a1810] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[999999999] bg-purple-600 flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-[#1a2e23] p-8 rounded-3xl border border-white/10">
         <h1 className="text-3xl font-cormorant text-center mb-8">Create Account</h1>
         
