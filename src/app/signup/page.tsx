@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
 export default function SignupPage() {
+  const { signup, isLoggedIn } = useAuth();
   const { showToast } = useToast();
-  const router = useRouter();
-  const supabase = createClient();
   
   const [form, setForm] = useState({ 
     name: "", 
@@ -22,21 +20,14 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) router.replace("/account");
-    };
-    checkUser();
-  }, [router, supabase]);
+    if (isLoggedIn) {
+      window.location.href = "/account";
+    }
+  }, [isLoggedIn]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-
-    if (!form.name || !form.email || !form.phone || !form.password) {
-      showToast("Please fill in all fields", "error");
-      return;
-    }
 
     if (form.password !== form.confirm) {
       showToast("Passwords do not match", "error");
@@ -44,41 +35,29 @@ export default function SignupPage() {
     }
 
     setLoading(true);
-    console.log("🚀 EMERGENCY AUTH: Starting direct signup for", form.email);
+    console.log("🚀 AUTH START: Signup for", form.email);
     
     try {
-      const { data: authData, error } = await supabase.auth.signUp({
+      const res = await signup({
+        name: form.name,
         email: form.email,
-        password: form.password,
-        options: { 
-          data: { 
-            full_name: form.name,
-            phone: form.phone
-          } 
-        }
+        phone: form.phone,
+        password: form.password
       });
   
-      if (error) {
-        console.error("❌ Signup failed:", error.message);
-        showToast(error.message, "error");
-        setLoading(false);
-        return;
-      }
-
-      showToast("Account created successfully!", "success");
-      
-      if (!authData.session) {
-        // Confirmation required
-        router.push("/login?confirmed=false");
-      } else {
-        console.log("✅ Signup successful! Forcing redirect...");
-        // HARD REDIRECT
+      if (res.success) {
+        console.log("✅ AUTH SUCCESS: Redirecting to account...");
+        showToast("Account created! Welcome to the Heritage.", "success");
         setTimeout(() => {
           window.location.href = "/account";
-        }, 800);
+        }, 500);
+      } else {
+        console.error("❌ AUTH FAILED:", res.error);
+        showToast(res.error || "Signup failed", "error");
+        setLoading(false);
       }
     } catch (err: any) {
-      console.error("💥 Critical signup crash:", err);
+      console.error("💥 AUTH CRASH:", err);
       showToast("A connection error occurred", "error");
       setLoading(false);
     }
@@ -103,6 +82,7 @@ export default function SignupPage() {
                 placeholder="Full Name" 
                 value={form.name} 
                 onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
@@ -110,6 +90,7 @@ export default function SignupPage() {
                 placeholder="Email Address" 
                 value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
@@ -117,6 +98,7 @@ export default function SignupPage() {
                 placeholder="Mobile Number" 
                 value={form.phone} 
                 onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
@@ -124,6 +106,7 @@ export default function SignupPage() {
                 placeholder="Password" 
                 value={form.password} 
                 onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
@@ -131,6 +114,7 @@ export default function SignupPage() {
                 placeholder="Confirm Password" 
                 value={form.confirm} 
                 onChange={(e) => setForm({ ...form, confirm: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
             </div>
@@ -150,7 +134,7 @@ export default function SignupPage() {
           </p>
 
           <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
-            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold italic">System v3.0 - Direct Auth Active</p>
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">RECONSTRUCTION v1.0 - PROD STABLE</p>
           </div>
         </div>
       </div>

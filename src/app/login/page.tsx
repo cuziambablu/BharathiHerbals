@@ -1,72 +1,50 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
 export default function LoginPage() {
+  const { login, isLoggedIn } = useAuth();
   const { showToast } = useToast();
-  const router = useRouter();
-  const supabase = createClient();
   
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
-  // Check if already logged in
+  // Use a hard redirect if already logged in
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) router.replace("/account");
-    };
-    checkUser();
-  }, [router, supabase]);
+    if (isLoggedIn) {
+      console.log("✅ Already logged in, redirecting...");
+      window.location.href = "/account";
+    }
+  }, [isLoggedIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
 
-    if (!form.email || !form.password) {
-      showToast("Please enter your credentials", "error");
-      return;
-    }
-
     setLoading(true);
-    console.log("🚀 EMERGENCY AUTH: Starting direct login for", form.email);
+    console.log("🚀 AUTH START: Login for", form.email);
     
-    if (!supabase) {
-      showToast("CRITICAL: Supabase Keys missing in Vercel Dashboard!", "error");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // DIRECT LOGIN - Bypassing AuthContext for maximum stability
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: form.email,
-        password: form.password
-      });
-
-      if (error) {
-        console.error("❌ Login failed:", error.message);
-        showToast(error.message, "error");
-        setLoading(false);
-        return;
-      }
-
-      if (data.user) {
-        console.log("✅ Login successful! Forcing redirect...");
+      const res = await login(form.email, form.password);
+      
+      if (res.success) {
+        console.log("✅ AUTH SUCCESS: Redirecting to account...");
         showToast("Welcome back!", "success");
-        
-        // NUCLEAR OPTION: Wait 500ms for cookies, then force refresh
+        // Use a slight delay to allow cookies to settle, then hard redirect
         setTimeout(() => {
           window.location.href = "/account";
-        }, 500);
+        }, 300);
+      } else {
+        console.error("❌ AUTH FAILED:", res.error);
+        showToast(res.error || "Login failed", "error");
+        setLoading(false);
       }
     } catch (err: any) {
-      console.error("💥 Critical login crash:", err);
+      console.error("💥 AUTH CRASH:", err);
       showToast("A connection error occurred", "error");
       setLoading(false);
     }
@@ -82,7 +60,7 @@ export default function LoginPage() {
           
           <div className="text-center mb-10 relative z-10">
             <h1 className="font-cormorant text-4xl text-cream mb-2 italic">Welcome Back</h1>
-            <p className="font-poppins text-cream/40 text-[10px] tracking-[0.4em] uppercase">Sign in to your luxury experience</p>
+            <p className="font-poppins text-cream/40 text-[10px] tracking-[0.4em] uppercase">Sign in to your heritage account</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5 relative z-10">
@@ -92,6 +70,7 @@ export default function LoginPage() {
                 placeholder="Email Address" 
                 value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
@@ -99,6 +78,7 @@ export default function LoginPage() {
                 placeholder="Password" 
                 value={form.password} 
                 onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                required
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
             </div>
@@ -118,7 +98,7 @@ export default function LoginPage() {
           </p>
 
           <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
-            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold italic">System v3.0 - Direct Auth Active</p>
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">RECONSTRUCTION v1.0 - PROD STABLE</p>
           </div>
         </div>
       </div>
