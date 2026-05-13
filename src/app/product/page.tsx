@@ -152,7 +152,7 @@ export default function ShopPage() {
     });
   }, []);
 
-  const categories = ["All", ...new Set(products.map(p => p.category))];
+  const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
   const filteredProducts = filter === "All" ? products : products.filter(p => p.category === filter);
 
   return (

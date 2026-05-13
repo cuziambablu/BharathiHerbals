@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const supabaseClient = supabase || getSupabase();
     if (supabaseClient) {
-      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: string, session: any) => {
         if (session?.user) {
           await fetchUserData(session.user);
         } else {

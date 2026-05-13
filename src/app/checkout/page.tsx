@@ -24,6 +24,8 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
+  const delivery: number = 99;
+  const discount = couponApplied ? 150 : 0;
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -31,8 +33,6 @@ export default function CheckoutPage() {
     line1: "", line2: "", city: "", state: "", pincode: "",
   });
 
-  const discount = couponApplied ? Math.round(subtotal * 0.1) : 0;
-  const delivery = 99;
   const tax = Math.round((subtotal - discount) * 0.05);
   const total = subtotal - discount + delivery + tax;
 
@@ -62,7 +62,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     console.log("Button clicked. Starting handlePlaceOrder...");
     if (paymentMethod === "cod") {
-      addOrder({
+      (addOrder as any)({
         items: items.map((i) => ({ name: i.name, size: i.size, qty: i.quantity, price: i.price })),
         total,
         status: "ordered",

@@ -48,7 +48,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           .eq('user_id', user.id);
 
         if (!error && data) {
-          currentItems = data.map(item => ({
+          currentItems = data.map((item: any) => ({
             productId: item.product_id,
             name: item.products.product_name,
             size: item.bottle_size,
@@ -65,7 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             // VALIDATE PRICES against current data
             // Since we only have one product for now, we can hardcode or fetch
             // Let's at least ensure the Herbal Oil is 199
-            currentItems = currentItems.map(item => {
+            currentItems = currentItems.map((item: CartItem) => {
               if (item.productId === 'bharathi-herbal-oil' || item.name.includes('Herbal Hair Oil')) {
                 return { ...item, price: 199 };
               }

@@ -30,7 +30,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
           .eq('user_id', user.id);
         
         if (!error && data) {
-          setItems(data.map(i => i.product_id));
+          setItems(data.map((i: any) => i.product_id));
         }
       } else {
         try {
