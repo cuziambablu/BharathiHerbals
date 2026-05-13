@@ -37,9 +37,13 @@ export default function SignupPage() {
 
   if (isLoggedIn) return null;
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("🚀 [DEBUG] 1. Form submit button clicked");
+  const handleSignup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // DIAGNOSTIC ALERT: If you see this, the click is working!
+    window.alert("🚀 CLICK REGISTERED! Starting signup process...");
+    
+    console.log("🚀 [DEBUG] 1. Form click handler triggered");
 
     if (loading) {
       console.log("⚠️ [DEBUG] Already loading, ignoring click");
@@ -116,7 +120,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0a1810] selection:bg-gold/30 selection:text-white">
+    <main className="min-h-screen bg-[#0a1810] selection:bg-gold/30 selection:text-white relative z-[99999]">
       <Navbar />
       
       <div className="pt-32 pb-20 px-6 flex items-center justify-center">
