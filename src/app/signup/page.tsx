@@ -8,16 +8,29 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
+/**
+ * EMERGENCY DEBUG MODE: SIGNUP PAGE
+ * Focus: Reliability and Redirection
+ */
 export default function SignupPage() {
   const { signup, isLoggedIn } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
+  
+  const [form, setForm] = useState({ 
+    name: "", 
+    email: "", 
+    phone: "", 
+    password: "", 
+    confirm: "" 
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // REDIRECT IF LOGGED IN
   useEffect(() => {
     if (isLoggedIn) {
+      console.log("🚀 [DEBUG] User already logged in, redirecting to /account");
       router.replace("/account");
     }
   }, [isLoggedIn, router]);
@@ -26,28 +39,35 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    console.log("🚀 [DEBUG] 1. Form submit button clicked");
 
-    // Manual Validation to prevent browser blocking issues
+    if (loading) {
+      console.log("⚠️ [DEBUG] Already loading, ignoring click");
+      return;
+    }
+
+    // MANUAL VALIDATION (Bypasses hidden browser issues)
     if (!form.name || !form.email || !form.phone || !form.password) {
+      console.warn("⚠️ [DEBUG] Missing fields:", { 
+        name: !!form.name, 
+        email: !!form.email, 
+        phone: !!form.phone, 
+        password: !!form.password 
+      });
       showToast("Please fill in all fields", "error");
       return;
     }
 
-    if (form.password !== form.confirm) { 
-      showToast("Passwords do not match", "error"); 
-      return; 
-    }
-    if (form.password.length < 6) { 
-      showToast("Password must be at least 6 characters", "error"); 
-      return; 
+    if (form.password !== form.confirm) {
+      console.warn("⚠️ [DEBUG] Passwords mismatch");
+      showToast("Passwords do not match", "error");
+      return;
     }
 
     setLoading(true);
-    console.log("🚀 [SIGNUP_FLOW] 1. Submission started");
-    
+    console.log("🚀 [DEBUG] 2. Starting signup process for:", form.email);
+
     try {
-      console.log("🚀 [SIGNUP_FLOW] 2. Calling signup function with:", { email: form.email, name: form.name });
       const res = await signup({ 
         name: form.name, 
         email: form.email, 
@@ -55,49 +75,53 @@ export default function SignupPage() {
         password: form.password 
       }) as any;
       
-      console.log("🚀 [SIGNUP_FLOW] 3. Response received:", res);
+      console.log("🚀 [DEBUG] 3. Signup function response:", res);
 
       if (res.success) {
         if (res.confirmationRequired) {
-          console.log("🚀 [SIGNUP_FLOW] 4a. Success: Confirmation Required");
-          showToast("Account created! Verify your email to login.", "success");
-          router.replace("/login");
+          console.log("✅ [DEBUG] 4. Signup success (Confirmation Required)");
+          showToast("Account created! Check your email to verify.", "success");
+          router.push("/login");
+          
+          // Force fallback redirect if router hangs
+          setTimeout(() => {
+            if (window.location.pathname.includes('signup')) {
+              console.log("🔄 [DEBUG] Router hang detected, forcing window redirect to /login");
+              window.location.href = '/login';
+            }
+          }, 3000);
         } else {
-          console.log("🚀 [SIGNUP_FLOW] 4b. Success: Instant Login");
-          showToast("Welcome to BHARATHI Heritage", "success");
+          console.log("✅ [DEBUG] 4. Signup success (Instant Login)");
+          showToast("Account created! Welcome to BHARATHI.", "success");
           router.replace("/account");
+          
+          // Force fallback redirect
+          setTimeout(() => {
+            if (window.location.pathname.includes('signup')) {
+              console.log("🔄 [DEBUG] Router hang detected, forcing window redirect to /account");
+              window.location.href = '/account';
+            }
+          }, 3000);
         }
       } else {
-        console.error("❌ [SIGNUP_FLOW] 4c. Failed:", res.error);
-        showToast(res.error || "Signup failed. Please check your details.", "error");
+        console.error("❌ [DEBUG] 5. Signup failed:", res.error);
+        showToast(res.error || "Signup failed. Try again.", "error");
         setLoading(false);
       }
     } catch (err: any) {
-      console.error("💥 [SIGNUP_FLOW] CRITICAL ERROR:", err);
-      showToast("A system error occurred. Checking connection...", "error");
+      console.error("💥 [DEBUG] 6. Signup system crash:", err);
+      showToast("System error. Please check your connection.", "error");
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#0a1810] selection:bg-gold/30">
+    <main className="min-h-screen bg-[#0a1810] selection:bg-gold/30 selection:text-white">
       <Navbar />
       
-      <div className="pt-28 pb-16 px-6 flex items-center justify-center min-h-[calc(100vh-80px)]">
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="w-full max-w-md"
-        >
+      <div className="pt-32 pb-20 px-6 flex items-center justify-center">
+        <div className="w-full max-w-md">
           <div className="text-center mb-10">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="w-16 h-16 bg-gold/10 border border-gold/20 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            >
-              <span className="text-2xl">🌱</span>
-            </motion.div>
             <h1 className="font-cormorant text-5xl text-cream mb-3 tracking-tight">Create Account</h1>
             <p className="font-poppins text-cream/40 text-sm tracking-wide">Join the BHARATHI luxury heritage</p>
           </div>
@@ -107,10 +131,10 @@ export default function SignupPage() {
               <div className="space-y-1.5">
                 <label className="font-poppins text-[10px] text-cream/30 tracking-[0.2em] uppercase ml-1">Full Name</label>
                 <input 
-                  placeholder="Priya Sharma" 
+                  placeholder="Your Name" 
                   value={form.name} 
                   onChange={(e) => setForm({ ...form, name: e.target.value })} 
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 transition-all" 
                 />
               </div>
 
@@ -118,10 +142,10 @@ export default function SignupPage() {
                 <label className="font-poppins text-[10px] text-cream/30 tracking-[0.2em] uppercase ml-1">Email Address</label>
                 <input 
                   type="email" 
-                  placeholder="priya@example.com" 
+                  placeholder="email@example.com" 
                   value={form.email} 
                   onChange={(e) => setForm({ ...form, email: e.target.value })} 
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 transition-all" 
                 />
               </div>
 
@@ -131,7 +155,7 @@ export default function SignupPage() {
                   placeholder="+91 98765 43210" 
                   value={form.phone} 
                   onChange={(e) => setForm({ ...form, phone: e.target.value })} 
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 transition-all" 
                 />
               </div>
 
@@ -143,13 +167,12 @@ export default function SignupPage() {
                     placeholder="••••••••" 
                     value={form.password} 
                     onChange={(e) => setForm({ ...form, password: e.target.value })} 
-                    required 
-                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 transition-all" 
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 text-cream/20 hover:text-cream/60 transition-colors"
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-cream/20 hover:text-gold transition-colors"
                   >
                     {showPassword ? "👁️" : "👁️‍🗨️"}
                   </button>
@@ -163,36 +186,27 @@ export default function SignupPage() {
                   placeholder="••••••••" 
                   value={form.confirm} 
                   onChange={(e) => setForm({ ...form, confirm: e.target.value })} 
-                  required 
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 transition-all" 
                 />
               </div>
             </div>
 
             <div className="pt-4">
-              <motion.button 
-                whileHover={{ scale: 1.01 }} 
-                whileTap={{ scale: 0.99 }} 
+              <button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full py-5 bg-gradient-to-r from-[#C8A96B] to-[#B8964F] text-[#0a1810] font-poppins font-bold text-xs tracking-[0.2em] uppercase rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-gold/5 hover:shadow-gold/15 transition-all duration-500"
+                className="w-full py-5 bg-gold text-[#0a1810] font-poppins font-bold text-xs tracking-[0.2em] uppercase rounded-2xl disabled:opacity-50 hover:bg-gold/90 transition-all shadow-xl shadow-gold/10"
               >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-3 h-3 border-2 border-[#0a1810]/30 border-t-[#0a1810] rounded-full animate-spin" />
-                    <span>Creating...</span>
-                  </div>
-                ) : "Create Account"}
-              </motion.button>
+                {loading ? "Creating Account..." : "Create Account"}
+              </button>
             </div>
           </form>
 
-          <div className="mt-8 text-center">
-            <Link href="/login" className="group font-poppins text-xs text-cream/40 hover:text-cream transition-all duration-300">
-              Already have an account? <span className="text-gold group-hover:underline underline-offset-8 decoration-gold/30">Sign in</span>
-            </Link>
-          </div>
-        </motion.div>
+          <p className="mt-8 text-center font-poppins text-xs text-cream/30 tracking-wide">
+            Already have an account?{" "}
+            <Link href="/login" className="text-gold hover:underline">Sign in</Link>
+          </p>
+        </div>
       </div>
     </main>
   );
