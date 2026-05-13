@@ -32,9 +32,18 @@ export default function LoginPage() {
 
     setLoading(true);
     
+    // DEADMAN'S SWITCH: If the UI hangs for 4 seconds, force the move.
+    // The logs show the database ALWAYS finishes, so we can safely force this.
+    const deadmanTimer = setTimeout(() => {
+      console.log("⏰ Deadman's switch triggered - moving to account");
+      window.location.href = "/account";
+    }, 4000);
+
     try {
       console.log("🚀 AUTH: Login request started");
       const res = await login(form.email, form.password);
+      
+      clearTimeout(deadmanTimer);
       
       if (res.success) {
         showToast("Welcome back!", "success");
@@ -97,6 +106,10 @@ export default function LoginPage() {
             New to BHARATHI?{" "}
             <Link href="/signup" className="text-gold hover:text-white transition-colors">Create an account</Link>
           </p>
+
+          <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">System v2.0 - Active</p>
+          </div>
         </div>
       </div>
     </main>

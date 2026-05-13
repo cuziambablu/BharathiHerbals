@@ -135,6 +135,10 @@ export default function SignupPage() {
             Already have an account?{" "}
             <Link href="/login" className="text-gold hover:text-white transition-colors">Sign in</Link>
           </p>
+
+          <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">System v2.0 - Active</p>
+          </div>
         </div>
       </div>
     </main>
