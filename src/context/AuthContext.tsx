@@ -60,18 +60,17 @@ interface AuthContextType {
   allOrders: Order[];
   allUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string }>;
-  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  signup: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
+  logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   addAddress: (addr: Omit<Address, "id">) => Promise<void>;
-  updateAddress: (id: string, addr: Partial<Address>) => Promise<void>;
   removeAddress: (id: string) => Promise<void>;
   setDefaultAddress: (id: string) => Promise<void>;
-  addOrder: (order: Omit<Order, "id" | "date" | "status" | "paymentStatus">) => Promise<{ success: boolean; id?: string }>;
+  addOrder: (order: any) => Promise<{ success: boolean; id?: string }>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   notifications: any[];
   clearNotification: (id: string) => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -85,18 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = useCallback(async (authUser: any) => {
+    if (!authUser) return;
     try {
-      console.log("🔍 [AUTH] Fetching profile for ID:", authUser.id);
-      // 1. Fetch Profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
-      }
 
       const userData: User = {
         id: authUser.id,
@@ -111,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       if (profile?.addresses) setAddresses(profile.addresses);
 
-      // 2. Fetch User Orders
       const { data: userOrders } = await supabase
         .from('orders')
         .select('*')
@@ -131,155 +124,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      // 3. Admin Data
       if (userData.role === 'admin') {
         const { data: ord } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
         const { data: usr } = await supabase.from('profiles').select('*');
         if (ord) setAllOrders(ord.map((o: any) => ({
-          id: o.id,
-          date: o.created_at,
-          items: o.items || [],
-          total: o.total_amount,
-          status: o.order_status,
-          paymentMethod: o.payment_method,
-          paymentStatus: o.payment_status,
-          address: o.shipping_address,
-          customerName: o.customer_name
+          id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status, paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
         })));
         if (usr) setAllUsers(usr.map((p: any) => ({
           id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
         })));
       }
     } catch (err) {
-      console.error("fetchUserData critical failure:", err);
+      console.error("fetchUserData error:", err);
     }
   }, []);
 
   useEffect(() => {
-    const checkSession = async () => {
-      console.log("Checking Supabase session...");
-      
-      const supabaseClient = supabase || getSupabase();
-      
-      if (!supabaseClient) {
-        console.warn("Supabase client not initialized. Check your .env.local keys and RESTART your dev server.");
-        setLoading(false);
-        return;
-      }
+    let mounted = true;
 
-      const timeout = setTimeout(() => {
-        console.warn("Session check timed out. Forcing loading to false.");
-        setLoading(false);
-      }, 2000); // 2 second safety timeout
-
+    const initAuth = async () => {
       try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-        if (error) console.error("Supabase session error:", error);
-        console.log("Session found:", !!session);
-        if (session?.user) await fetchUserData(session.user);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          if (session?.user) {
+            await fetchUserData(session.user);
+          }
+          setLoading(false);
+        }
       } catch (err) {
-        console.error("Session check exception:", err);
-      } finally {
-        clearTimeout(timeout);
-        setLoading(false);
-        console.log("Auth loading complete.");
+        if (mounted) setLoading(false);
       }
     };
-    checkSession();
 
-    const supabaseClient = supabase || getSupabase();
-    if (supabaseClient) {
-      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: string, session: any) => {
-        if (session?.user) {
-          await fetchUserData(session.user);
-        } else {
-          setUser(null);
-          setOrders([]);
-          setAddresses([]);
-          setAllOrders([]);
-          setAllUsers([]);
-        }
-        setLoading(false);
-      });
+    initAuth();
 
-      return () => subscription.unsubscribe();
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await fetchUserData(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setOrders([]);
+        setAddresses([]);
+        setAllOrders([]);
+        setAllUsers([]);
+      }
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchUserData]);
 
   const login = async (email: string, password: string) => {
-    console.log("Attempting login for:", email);
-    if (!supabase) return { success: false, error: "Supabase client not initialized" };
-    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        console.error("Login error:", error.message);
-        let userMessage = error.message;
-        if (error.message.includes("Invalid login credentials")) userMessage = "Incorrect email or password. Please try again.";
-        if (error.message.includes("Email not confirmed")) userMessage = "Please check your email and confirm your account first.";
-        return { success: false, error: userMessage };
-      }
-      console.log("Login successful:", data.user?.id);
+      if (error) return { success: false, error: error.message };
+      if (data.user) await fetchUserData(data.user);
       return { success: true };
     } catch (err: any) {
-      console.error("Login exception:", err);
-      return { success: false, error: err.message || "An unexpected error occurred" };
+      return { success: false, error: err.message };
     }
   };
 
   const signup = async (data: { name: string; email: string; phone: string; password: string }) => {
-    console.log("🚀 [AUTH] Attempting signup for:", data.email);
-    if (!supabase) {
-      console.error("❌ [AUTH] Supabase client missing!");
-      return { success: false, error: "Connection error" };
-    }
-
     try {
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        options: { 
-          data: { 
-            full_name: data.name,
-            phone: data.phone
-          } 
-        }
+        options: { data: { full_name: data.name, phone: data.phone } }
       });
-  
-      if (error) {
-        console.error("Signup error:", error.message);
-        let userMessage = error.message;
-        if (error.message.includes("rate limit")) userMessage = "Too many attempts. Please try again in a few minutes.";
-        if (error.message.includes("already registered")) userMessage = "This email is already associated with an account.";
-        return { success: false, error: userMessage };
-      }
-      
-      console.log("✅ [AUTH] Signup successful for user:", authData.user?.id, "Session:", !!authData.session);
-      return { 
-        success: true, 
-        confirmationRequired: !authData.session 
-      };
+      if (error) return { success: false, error: error.message };
+      return { success: true, confirmationRequired: !authData.session };
     } catch (err: any) {
-      console.error("Signup exception:", err);
-      return { success: false, error: err.message || "An unexpected error occurred" };
+      return { success: false, error: err.message };
     }
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
+    window.location.href = "/login";
   };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-    const { error } = await supabase.from('profiles').update({
+    await supabase.from('profiles').update({
       full_name: data.name,
       phone: data.phone,
       avatar_url: data.avatar
     }).eq('id', user.id);
-    
-    if (!error) {
-      setUser(prev => prev ? { ...prev, ...data } : null);
-    }
+    setUser(prev => prev ? { ...prev, ...data } : null);
   };
 
   const addAddress = async (addr: Omit<Address, "id">) => {
@@ -310,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user_id: user.id,
       total_amount: orderData.total,
       payment_method: orderData.paymentMethod,
-      payment_status: 'success', // Mock success for now
+      payment_status: 'success',
       order_status: 'ordered',
       shipping_address: orderData.address,
       customer_name: user.name,
@@ -320,7 +255,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { success: false, error: error.message };
 
-    // Also insert items into order_items
     const itemsToInsert = orderData.items.map((item: any) => ({
       order_id: data.id,
       product_name: item.name,
@@ -357,22 +291,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user, isLoggedIn: !!user, isAdmin: user?.role === "admin",
       addresses, orders, allOrders, allUsers,
-      login, signup, adminLogin: login, logout, updateProfile,
-      addAddress, updateAddress: async () => {}, removeAddress, setDefaultAddress,
+      login, signup, logout, updateProfile,
+      addAddress, removeAddress, setDefaultAddress,
       addOrder, updateOrderStatus, notifications: [], clearNotification: () => {},
+      loading
     }}>
-      {loading ? (
-        <div className="min-h-screen bg-[#0a1810] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-gold/20 border-t-gold rounded-full animate-spin" />
-            <p className="font-poppins text-xs text-gold/60 tracking-widest uppercase animate-pulse">Authenticating...</p>
-          </div>
-        </div>
-      ) : children}
+      {children}
     </AuthContext.Provider>
   );
 }
-
 
 export function useAuth() {
   const ctx = useContext(AuthContext);

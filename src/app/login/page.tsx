@@ -33,15 +33,15 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      console.log("🚀 Attempting login for:", form.email);
-      const res = await login(form.email, form.password) as any;
+      console.log("🚀 AUTH: Login request started");
+      const res = await login(form.email, form.password);
       
       if (res.success) {
         showToast("Welcome back!", "success");
-        router.push("/account");
+        // HARD REDIRECT to ensure session cookies sync
+        window.location.href = "/account";
       } else {
-        // THIS IS THE CRITICAL FIX: SHOW THE ERROR TO THE USER
-        showToast(res.error || "Login failed. Please check your credentials.", "error");
+        showToast(res.error || "Login failed", "error");
         setLoading(false);
       }
     } catch (err: any) {
@@ -56,18 +56,19 @@ export default function LoginPage() {
       <Navbar />
       
       <div className="pt-40 pb-20 px-6 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white/[0.02] border border-white/5 p-10 rounded-[2.5rem] relative overflow-hidden">
+        <div className="w-full max-w-md bg-white/[0.02] border border-white/5 p-10 rounded-[2.5rem] relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 blur-3xl rounded-full" />
           
           <div className="text-center mb-10 relative z-10">
             <h1 className="font-cormorant text-4xl text-cream mb-2 italic">Welcome Back</h1>
-            <p className="font-poppins text-cream/40 text-[10px] tracking-[0.4em] uppercase">Sign in to your heritage account</p>
+            <p className="font-poppins text-cream/40 text-[10px] tracking-[0.4em] uppercase">Sign in to your luxury experience</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5 relative z-10">
             <div className="space-y-4">
               <input 
                 type="email"
+                autoComplete="email"
                 placeholder="Email Address" 
                 value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })} 
@@ -75,6 +76,7 @@ export default function LoginPage() {
               />
               <input 
                 type="password"
+                autoComplete="current-password"
                 placeholder="Password" 
                 value={form.password} 
                 onChange={(e) => setForm({ ...form, password: e.target.value })} 
@@ -87,7 +89,7 @@ export default function LoginPage() {
               disabled={loading} 
               className="w-full py-5 bg-gold text-[#0a1810] font-poppins font-bold text-[10px] tracking-[0.3em] uppercase rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 shadow-xl shadow-gold/10"
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {loading ? "Establishing Connection..." : "Sign In"}
             </button>
           </form>
 
