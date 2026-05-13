@@ -38,6 +38,8 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+    console.log("Signup process started...");
+    
     try {
       const res = await signup({ 
         name: form.name, 
@@ -46,20 +48,38 @@ export default function SignupPage() {
         password: form.password 
       }) as any;
       
+      console.log("Signup response received:", res);
+
       if (res.success) {
         if (res.confirmationRequired) {
-          showToast("Welcome! Please check your email to confirm your account.", "success");
+          showToast("Account created! Please check your email to verify.", "success");
+          console.log("Confirmation required. Redirecting to login...");
           router.push("/login");
+          // Fallback if router hangs
+          setTimeout(() => { if (window.location.pathname !== '/login') window.location.href = '/login'; }, 3000);
         } else {
-          showToast("Account created! Welcome to BHARATHI", "success");
+          showToast("Account created! Redirecting to your dashboard...", "success");
+          console.log("No confirmation required. Redirecting to account...");
+          
+          // Triple-check redirection
           router.push("/account");
+          
+          // Force fallback redirect after 2 seconds if still on signup
+          setTimeout(() => {
+            if (window.location.pathname.includes('signup')) {
+              console.log("Router hang detected. Forcing window redirect...");
+              window.location.href = '/account';
+            }
+          }, 2000);
         }
       } else {
+        console.error("Signup failed:", res.error);
         showToast(res.error || "Signup failed", "error");
+        setLoading(false);
       }
-    } catch (err) {
-      showToast("An unexpected error occurred", "error");
-    } finally {
+    } catch (err: any) {
+      console.error("Signup crash:", err);
+      showToast(err.message || "An unexpected error occurred", "error");
       setLoading(false);
     }
   };

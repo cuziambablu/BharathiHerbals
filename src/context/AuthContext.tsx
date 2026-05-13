@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = useCallback(async (authUser: any) => {
     try {
-      console.log("Fetching profile for:", authUser.id);
+      console.log("🔍 [AUTH] Fetching profile for ID:", authUser.id);
       // 1. Fetch Profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -228,8 +228,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (data: { name: string; email: string; phone: string; password: string }) => {
-    console.log("Attempting signup for:", data.email);
-    if (!supabase) return { success: false, error: "Supabase client not initialized" };
+    console.log("🚀 [AUTH] Attempting signup for:", data.email);
+    if (!supabase) {
+      console.error("❌ [AUTH] Supabase client missing!");
+      return { success: false, error: "Connection error" };
+    }
 
     try {
       const { data: authData, error } = await supabase.auth.signUp({
@@ -251,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: userMessage };
       }
       
-      console.log("Signup successful for user:", authData.user?.id);
+      console.log("✅ [AUTH] Signup successful for user:", authData.user?.id, "Session:", !!authData.session);
       return { 
         success: true, 
         confirmationRequired: !authData.session 
