@@ -44,6 +44,12 @@ export default function SignupPage() {
 
     setLoading(true);
     
+    // NUCLEAR FALLBACK: If the database hangs, force redirect after 5 seconds
+    const fallbackTimer = setTimeout(() => {
+      console.log("⏱️ Fallback timer triggered - forcing redirect");
+      window.location.href = "/account";
+    }, 5000);
+
     try {
       console.log("🚀 Starting signup for:", form.email);
       const res = await signup({ 
@@ -52,6 +58,8 @@ export default function SignupPage() {
         phone: form.phone, 
         password: form.password 
       }) as any;
+      
+      clearTimeout(fallbackTimer);
       
       if (res.success) {
         showToast("Account created successfully!", "success");
