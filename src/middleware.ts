@@ -4,6 +4,11 @@ import { createClient } from '@/utils/supabase/middleware'
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createClient(request)
 
+  if (!supabase) {
+    console.error("❌ CRITICAL: Supabase client could not be initialized in Middleware.");
+    return response;
+  }
+
   // 1. Get user session - using the most stable method
   const { data: { user } } = await supabase.auth.getUser()
 
