@@ -4,31 +4,27 @@ import { createClient } from '@/utils/supabase/middleware'
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createClient(request)
 
-  // 1. Get user session
+  // 1. Get user session - using the most stable method
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
-                     request.nextUrl.pathname.startsWith('/signup')
-  
-  const isProtectedPage = request.nextUrl.pathname.startsWith('/account') || 
-                          request.nextUrl.pathname.startsWith('/admin')
+  const path = request.nextUrl.pathname;
+  const isAuthPage = path === '/login' || path === '/signup';
+  const isProtectedPage = path.startsWith('/account') || path.startsWith('/admin');
 
-  // 2. Redirect logged-in users away from auth pages (Login/Signup)
+  console.log(`[MIDDLEWARE] Path: ${path} | User: ${user?.id ? 'LOGGED_IN' : 'GUEST'}`);
+
+  // 2. LOGGED IN -> Trying to go to Login/Signup -> SEND TO ACCOUNT
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL('/account', request.url))
   }
 
-  // 3. Redirect logged-out users away from protected pages
+  // 3. LOGGED OUT -> Trying to go to Protected Page -> SEND TO LOGIN
   if (!user && isProtectedPage) {
-    // Only redirect if they are not already trying to go to /login or /signup
-    // (This prevents infinite loops)
-    if (!isAuthPage) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // 4. Role-based protection for /admin
-  if (user && request.nextUrl.pathname.startsWith('/admin')) {
+  // 4. ADMIN PROTECTION
+  if (user && path.startsWith('/admin')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -45,13 +41,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

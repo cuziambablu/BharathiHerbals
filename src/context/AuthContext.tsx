@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { supabase, getSupabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export type UserRole = "user" | "admin";
 
@@ -27,20 +27,12 @@ export interface Address {
   isDefault: boolean;
 }
 
-export interface OrderItem {
-  name: string;
-  size: string;
-  qty: number;
-  price: number;
-  image?: string;
-}
-
 export type OrderStatus = "ordered" | "confirmed" | "packed" | "shipped" | "out_for_delivery" | "delivered" | "cancelled";
 
 export interface Order {
   id: string;
   date: string;
-  items: OrderItem[];
+  items: any[];
   total: number;
   status: OrderStatus;
   paymentMethod: string;
@@ -61,7 +53,7 @@ interface AuthContextType {
   allUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
+  signup: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   addAddress: (addr: Omit<Address, "id">) => Promise<void>;
@@ -69,8 +61,6 @@ interface AuthContextType {
   setDefaultAddress: (id: string) => Promise<void>;
   addOrder: (order: any) => Promise<{ success: boolean; id?: string }>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
-  notifications: any[];
-  clearNotification: (id: string) => void;
   loading: boolean;
 }
 
@@ -87,173 +77,110 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = useCallback(async (authUser: any) => {
     if (!authUser) return;
     try {
-      // 1. Set basic info immediately
-      setUser({
+      console.log("🔍 [AUTH] Fetching profile for:", authUser.email);
+      
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+      
+      const userData: User = {
         id: authUser.id,
-        name: authUser.user_metadata?.full_name || "User",
+        name: profile?.full_name || authUser.user_metadata?.full_name || "User",
         email: authUser.email || "",
-        phone: authUser.user_metadata?.phone || "",
-        role: "user",
+        phone: profile?.phone || authUser.user_metadata?.phone || "",
+        role: (profile?.role as UserRole) || "user",
+        avatar: profile?.avatar_url,
         createdAt: authUser.created_at,
+      };
+      
+      setUser(userData);
+      if (profile?.addresses) setAddresses(profile.addresses);
+
+      // Background fetches - don't block
+      supabase.from('orders').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).then(({ data }) => {
+        if (data) setOrders(data.map((o: any) => ({
+          id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
+          paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address
+        })));
       });
 
-      // 2. Fetch full profile and orders in the background
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
-        .then(({ data: profile }) => {
-          if (profile) {
-            setUser(prev => prev ? {
-              ...prev,
-              name: profile.full_name || prev.name,
-              phone: profile.phone || prev.phone,
-              role: profile.role || "user",
-              avatar: profile.avatar_url
-            } : null);
-            if (profile.addresses) setAddresses(profile.addresses);
-
-            // Fetch admin data if needed
-            if (profile.role === 'admin') {
-              supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data: ord }) => {
-                if (ord) setAllOrders(ord.map((o: any) => ({
-                  id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status, paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
-                })));
-              });
-              supabase.from('profiles').select('*').then(({ data: usr }) => {
-                if (usr) setAllUsers(usr.map((p: any) => ({
-                  id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
-                })));
-              });
-            }
-          }
+      if (userData.role === 'admin') {
+        supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+          if (data) setAllOrders(data.map((o: any) => ({
+            id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
+            paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
+          })));
         });
-
-      supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false })
-        .then(({ data: userOrders }) => {
-          if (userOrders) {
-            setOrders(userOrders.map((o: any) => ({
-              id: o.id,
-              date: o.created_at,
-              items: o.items || [],
-              total: o.total_amount,
-              status: o.order_status,
-              paymentMethod: o.payment_method,
-              paymentStatus: o.payment_status,
-              address: o.shipping_address
-            })));
-          }
+        supabase.from('profiles').select('*').then(({ data }) => {
+          if (data) setAllUsers(data.map((p: any) => ({
+            id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
+          })));
         });
+      }
     } catch (err) {
-      console.error("fetchUserData background error:", err);
+      console.error("fetchUserData error:", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          if (session?.user) {
-            await fetchUserData(session.user);
-          }
-          setLoading(false);
-        }
-      } catch (err) {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
         await fetchUserData(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setOrders([]);
-        setAddresses([]);
-        setAllOrders([]);
-        setAllUsers([]);
+      } else {
+        setLoading(false);
       }
-      if (mounted) setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
     };
+    init();
   }, [fetchUserData]);
 
   const login = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { success: false, error: error.message };
-      if (data.user) fetchUserData(data.user);
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    if (data.user) await fetchUserData(data.user);
+    return { success: true };
   };
 
   const adminLogin = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { success: false, error: error.message };
-      
-      // Check if user is actually an admin
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user?.id).single();
-      if (profile?.role !== 'admin') {
-        await supabase.auth.signOut();
-        return { success: false, error: "Unauthorized: Admin access required." };
-      }
-
-      if (data.user) fetchUserData(data.user);
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+    if (profile?.role !== 'admin') {
+      await supabase.auth.signOut();
+      return { success: false, error: "Unauthorized access: Admin only." };
     }
+
+    if (data.user) await fetchUserData(data.user);
+    return { success: true };
   };
 
   const signup = async (data: { name: string; email: string; phone: string; password: string }) => {
-    try {
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: { data: { full_name: data.name, phone: data.phone } }
-      });
-      if (error) return { success: false, error: error.message };
-      return { success: true, confirmationRequired: !authData.session };
-    } catch (err: any) {
-      return { success: false, error: err.message };
-    }
+    const { data: authData, error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: { data: { full_name: data.name, phone: data.phone } }
+    });
+    if (error) return { success: false, error: error.message };
+    if (authData.user) await fetchUserData(authData.user);
+    return { success: true };
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
+    setUser(null);
     window.location.href = "/login";
   };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-    await supabase.from('profiles').update({
-      full_name: data.name,
-      phone: data.phone,
-      avatar_url: data.avatar
-    }).eq('id', user.id);
+    await supabase.from('profiles').update({ full_name: data.name, phone: data.phone, avatar_url: data.avatar }).eq('id', user.id);
     setUser(prev => prev ? { ...prev, ...data } : null);
   };
 
   const addAddress = async (addr: Omit<Address, "id">) => {
     if (!user) return;
-    const newAddr = { ...addr, id: `addr_${Date.now()}` };
+    const newAddr = { ...addr, id: Math.random().toString(36).substr(2, 9), isDefault: addresses.length === 0 };
     const newAddresses = [...addresses, newAddr];
     await supabase.from('profiles').update({ addresses: newAddresses }).eq('id', user.id);
     setAddresses(newAddresses);
@@ -276,49 +203,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const addOrder = async (orderData: any) => {
     if (!user) return { success: false, error: "Not logged in" };
     const { data, error } = await supabase.from('orders').insert({
-      user_id: user.id,
-      total_amount: orderData.total,
-      payment_method: orderData.paymentMethod,
-      payment_status: 'success',
-      order_status: 'ordered',
-      shipping_address: orderData.address,
-      customer_name: user.name,
-      customer_email: user.email,
-      customer_phone: user.phone
+      user_id: user.id, total_amount: orderData.total, payment_method: orderData.paymentMethod,
+      payment_status: 'success', order_status: 'ordered', shipping_address: orderData.address,
+      customer_name: user.name, customer_email: user.email, customer_phone: user.phone
     }).select().single();
-
     if (error) return { success: false, error: error.message };
-
-    const itemsToInsert = orderData.items.map((item: any) => ({
-      order_id: data.id,
-      product_name: item.name,
-      quantity: item.qty,
-      price: item.price,
-      bottle_size: item.size
-    }));
-
-    await supabase.from('order_items').insert(itemsToInsert);
-    
-    const newOrder: Order = {
-      id: data.id,
-      date: data.created_at,
-      items: orderData.items,
-      total: data.total_amount,
-      status: 'ordered',
-      paymentMethod: data.payment_method,
-      paymentStatus: 'success',
-      address: data.shipping_address
-    };
-
-    setOrders(prev => [newOrder, ...prev]);
     return { success: true, id: data.id };
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
     const { error } = await supabase.from('orders').update({ order_status: status }).eq('id', orderId);
-    if (!error) {
-      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-    }
+    if (!error) setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
 
   return (
@@ -327,8 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       addresses, orders, allOrders, allUsers,
       login, adminLogin, signup, logout, updateProfile,
       addAddress, removeAddress, setDefaultAddress,
-      addOrder, updateOrderStatus, notifications: [], clearNotification: () => {},
-      loading
+      addOrder, updateOrderStatus, loading
     }}>
       {children}
     </AuthContext.Provider>
