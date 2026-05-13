@@ -86,56 +86,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = useCallback(async (authUser: any) => {
     if (!authUser) return;
     try {
-      const { data: profile } = await supabase
+      // 1. Set basic info immediately
+      setUser({
+        id: authUser.id,
+        name: authUser.user_metadata?.full_name || "User",
+        email: authUser.email || "",
+        phone: authUser.user_metadata?.phone || "",
+        role: "user",
+        createdAt: authUser.created_at,
+      });
+
+      // 2. Fetch full profile and orders in the background
+      supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .single()
+        .then(({ data: profile }) => {
+          if (profile) {
+            setUser(prev => prev ? {
+              ...prev,
+              name: profile.full_name || prev.name,
+              phone: profile.phone || prev.phone,
+              role: profile.role || "user",
+              avatar: profile.avatar_url
+            } : null);
+            if (profile.addresses) setAddresses(profile.addresses);
 
-      const userData: User = {
-        id: authUser.id,
-        name: profile?.full_name || authUser.user_metadata?.full_name || "User",
-        email: authUser.email || "",
-        phone: profile?.phone || authUser.user_metadata?.phone || "",
-        role: (profile?.role as UserRole) || "user",
-        avatar: profile?.avatar_url,
-        createdAt: authUser.created_at,
-      };
-      
-      setUser(userData);
-      if (profile?.addresses) setAddresses(profile.addresses);
+            // Fetch admin data if needed
+            if (profile.role === 'admin') {
+              supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data: ord }) => {
+                if (ord) setAllOrders(ord.map((o: any) => ({
+                  id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status, paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
+                })));
+              });
+              supabase.from('profiles').select('*').then(({ data: usr }) => {
+                if (usr) setAllUsers(usr.map((p: any) => ({
+                  id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
+                })));
+              });
+            }
+          }
+        });
 
-      const { data: userOrders } = await supabase
+      supabase
         .from('orders')
         .select('*')
         .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false });
-      
-      if (userOrders) {
-        setOrders(userOrders.map((o: any) => ({
-          id: o.id,
-          date: o.created_at,
-          items: o.items || [],
-          total: o.total_amount,
-          status: o.order_status,
-          paymentMethod: o.payment_method,
-          paymentStatus: o.payment_status,
-          address: o.shipping_address
-        })));
-      }
-
-      if (userData.role === 'admin') {
-        const { data: ord } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-        const { data: usr } = await supabase.from('profiles').select('*');
-        if (ord) setAllOrders(ord.map((o: any) => ({
-          id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status, paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
-        })));
-        if (usr) setAllUsers(usr.map((p: any) => ({
-          id: p.id, name: p.full_name, email: p.email, phone: p.phone, role: p.role, createdAt: p.created_at
-        })));
-      }
+        .order('created_at', { ascending: false })
+        .then(({ data: userOrders }) => {
+          if (userOrders) {
+            setOrders(userOrders.map((o: any) => ({
+              id: o.id,
+              date: o.created_at,
+              items: o.items || [],
+              total: o.total_amount,
+              status: o.order_status,
+              paymentMethod: o.payment_method,
+              paymentStatus: o.payment_status,
+              address: o.shipping_address
+            })));
+          }
+        });
     } catch (err) {
-      console.error("fetchUserData error:", err);
+      console.error("fetchUserData background error:", err);
     }
   }, []);
 
@@ -181,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { success: false, error: error.message };
-      if (data.user) await fetchUserData(data.user);
+      if (data.user) fetchUserData(data.user);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
