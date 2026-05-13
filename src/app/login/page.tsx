@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -17,7 +17,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isLoggedIn) { router.replace("/account"); return null; }
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.replace("/account");
+    }
+  }, [isLoggedIn, router]);
+
+  if (isLoggedIn) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
