@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Poppins } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/context/CartContext";
-import { WishlistProvider } from "@/context/WishlistContext";
-import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
-import CartDrawer from "@/components/CartDrawer";
+import { ToastProvider } from "@/context/ToastContext";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -22,8 +19,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "BHARATHI | Luxury Herbal Elixirs",
-  description: "Experience the ultimate in Ayurvedic hair and skin care with Bharathi.",
+  title: "BHARATHI | Pure Performance",
+  description: "Experience Bharathi.",
 };
 
 export default function RootLayout({
@@ -32,22 +29,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${cormorant.variable} ${poppins.variable} font-sans bg-[#0a1810] text-cream antialiased`}>
+    <html lang="en">
+      <body className={`${cormorant.variable} ${poppins.variable} bg-[#0a1810] text-cream`}>
         <AuthProvider>
           <ToastProvider>
-            <CartProvider>
-              <WishlistProvider>
-                {/* 
-                  Simplified Layout: Removed experimental components 
-                  that were blocking interactions (SmoothScroll, Preloader, etc.)
-                */}
-                <div className="relative min-h-screen">
-                  {children}
-                </div>
-                <CartDrawer />
-              </WishlistProvider>
-            </CartProvider>
+            {/* GROUND ZERO: No Navbar, No Cart, No Overlays */}
+            <main id="root-main">
+              {children}
+            </main>
           </ToastProvider>
         </AuthProvider>
       </body>
