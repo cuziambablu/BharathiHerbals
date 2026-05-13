@@ -154,10 +154,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserData(session.user);
-      } else {
+      try {
+        console.log("🛠️ [AUTH] Initializing session...");
+        if (!supabase) {
+          console.warn("⚠️ [AUTH] Supabase client is null. Check environment variables.");
+          return;
+        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchUserData(session.user);
+        }
+      } catch (err) {
+        console.error("💥 [AUTH] Init crash:", err);
+      } finally {
         setLoading(false);
       }
     };
