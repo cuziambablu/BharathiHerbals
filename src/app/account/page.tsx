@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, type OrderStatus } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -31,7 +31,14 @@ export default function AccountPage() {
   
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: user?.name || "", phone: user?.phone || "" });
+  const [profileForm, setProfileForm] = useState({ name: "", phone: "" });
+
+  // Sync profile form when user data is available
+  useEffect(() => {
+    if (user) {
+      setProfileForm({ name: user.name || "", phone: user.phone || "" });
+    }
+  }, [user]);
 
   const handleUpdateProfile = () => {
     updateProfile(profileForm);
@@ -61,7 +68,7 @@ export default function AccountPage() {
                 <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 text-center">
                   <div className="relative w-24 h-24 mx-auto mb-4 group">
                     <div className="w-full h-full rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-cormorant text-3xl text-gold overflow-hidden">
-                      {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : user?.name[0]}
+                      {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : (user?.name?.[0] || "?")}
                     </div>
                     <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gold text-[#0a1810] flex items-center justify-center text-xs shadow-lg group-hover:scale-110 transition-transform">
                       📷
@@ -119,7 +126,9 @@ export default function AccountPage() {
                         </div>
                         <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8">
                           <p className="font-poppins text-[10px] text-cream/30 tracking-widest uppercase mb-2">Member Since</p>
-                          <h3 className="font-cormorant text-3xl text-gold">{new Date(user?.createdAt || "").getFullYear()}</h3>
+                          <h3 className="font-cormorant text-3xl text-gold">
+                            {user?.createdAt ? new Date(user.createdAt).getFullYear() : "2026"}
+                          </h3>
                         </div>
                       </div>
 
