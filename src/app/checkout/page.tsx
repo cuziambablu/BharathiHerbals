@@ -172,8 +172,18 @@ export default function CheckoutPage() {
       paymentObject.on('payment.failed', function (response: any) {
         console.error("Payment failed:", response.error);
         showToast(response.error.description || "Payment failed", "error");
+        setLoading(false);
       });
 
+      // Add onDismiss to handle modal closure
+      (options as any).modal = {
+        ondismiss: function() {
+          console.log("Checkout modal closed by user");
+          setLoading(false);
+        }
+      };
+
+      console.log("Opening Razorpay modal...");
       paymentObject.open();
     } catch (error) {
       console.error("Checkout crash:", error);

@@ -95,18 +95,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profile?.addresses) setAddresses(profile.addresses);
 
       // Background fetches - don't block
-      supabase.from('orders').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
+      supabase.from('orders').select(`
+        *,
+        order_items (*)
+      `).eq('user_id', authUser.id).order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
         if (data) setOrders(data.map((o: any) => ({
-          id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
-          paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address
+          id: o.id, 
+          date: o.created_at, 
+          items: o.order_items?.map((i: any) => ({
+            name: i.product_name,
+            size: i.bottle_size,
+            qty: i.quantity,
+            price: i.price,
+            image: i.image_url // Note: this column might be empty if not saved
+          })) || [], 
+          total: o.total_amount, 
+          status: o.order_status,
+          paymentMethod: o.payment_method, 
+          paymentStatus: o.payment_status, 
+          address: o.shipping_address
         })));
       });
 
       if (userData.role === 'admin') {
-        supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
+        supabase.from('orders').select(`
+          *,
+          order_items (*)
+        `).order('created_at', { ascending: false }).then(({ data }: { data: any }) => {
           if (data) setAllOrders(data.map((o: any) => ({
-            id: o.id, date: o.created_at, items: o.items || [], total: o.total_amount, status: o.order_status,
-            paymentMethod: o.payment_method, paymentStatus: o.payment_status, address: o.shipping_address, customerName: o.customer_name
+            id: o.id, 
+            date: o.created_at, 
+            items: o.order_items?.map((i: any) => ({
+              name: i.product_name,
+              size: i.bottle_size,
+              qty: i.quantity,
+              price: i.price
+            })) || [], 
+            total: o.total_amount, 
+            status: o.order_status,
+            paymentMethod: o.payment_method, 
+            paymentStatus: o.payment_status, 
+            address: o.shipping_address, 
+            customerName: o.customer_name
           })));
         });
         supabase.from('profiles').select('*').then(({ data }: { data: any }) => {

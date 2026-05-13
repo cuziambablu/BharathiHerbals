@@ -146,10 +146,17 @@ export default function ShopPage() {
   const [filter, setFilter] = useState("All");
 
   useEffect(() => {
-    getProducts().then(data => {
-      setProducts(data);
-      setLoading(false);
-    });
+    const loadProducts = async () => {
+      try {
+        const data = await getProducts();
+        setProducts(data);
+      } catch (err) {
+        console.error("Failed to load products:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProducts();
   }, []);
 
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];

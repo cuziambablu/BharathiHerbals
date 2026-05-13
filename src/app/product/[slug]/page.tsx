@@ -100,12 +100,18 @@ export default function ProductSlugPage() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (slug) {
-      getProductBySlug(slug as string).then(data => {
+    const loadProduct = async () => {
+      if (!slug) return;
+      try {
+        const data = await getProductBySlug(slug as string);
         setProduct(data);
+      } catch (err) {
+        console.error("Failed to load product:", err);
+      } finally {
         setLoading(false);
-      });
-    }
+      }
+    };
+    loadProduct();
   }, [slug]);
 
   if (loading) return (
