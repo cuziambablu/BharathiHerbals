@@ -28,6 +28,12 @@ export default function SignupPage() {
     e.preventDefault();
     if (loading) return;
 
+    // Manual Validation to prevent browser blocking issues
+    if (!form.name || !form.email || !form.phone || !form.password) {
+      showToast("Please fill in all fields", "error");
+      return;
+    }
+
     if (form.password !== form.confirm) { 
       showToast("Passwords do not match", "error"); 
       return; 
@@ -38,9 +44,10 @@ export default function SignupPage() {
     }
 
     setLoading(true);
-    console.log("Signup process started...");
+    console.log("🚀 [SIGNUP_FLOW] 1. Submission started");
     
     try {
+      console.log("🚀 [SIGNUP_FLOW] 2. Calling signup function with:", { email: form.email, name: form.name });
       const res = await signup({ 
         name: form.name, 
         email: form.email, 
@@ -48,38 +55,26 @@ export default function SignupPage() {
         password: form.password 
       }) as any;
       
-      console.log("Signup response received:", res);
+      console.log("🚀 [SIGNUP_FLOW] 3. Response received:", res);
 
       if (res.success) {
         if (res.confirmationRequired) {
-          showToast("Account created! Please check your email to verify.", "success");
-          console.log("Confirmation required. Redirecting to login...");
-          router.push("/login");
-          // Fallback if router hangs
-          setTimeout(() => { if (window.location.pathname !== '/login') window.location.href = '/login'; }, 3000);
+          console.log("🚀 [SIGNUP_FLOW] 4a. Success: Confirmation Required");
+          showToast("Account created! Verify your email to login.", "success");
+          router.replace("/login");
         } else {
-          showToast("Account created! Redirecting to your dashboard...", "success");
-          console.log("No confirmation required. Redirecting to account...");
-          
-          // Triple-check redirection
-          router.push("/account");
-          
-          // Force fallback redirect after 2 seconds if still on signup
-          setTimeout(() => {
-            if (window.location.pathname.includes('signup')) {
-              console.log("Router hang detected. Forcing window redirect...");
-              window.location.href = '/account';
-            }
-          }, 2000);
+          console.log("🚀 [SIGNUP_FLOW] 4b. Success: Instant Login");
+          showToast("Welcome to BHARATHI Heritage", "success");
+          router.replace("/account");
         }
       } else {
-        console.error("Signup failed:", res.error);
-        showToast(res.error || "Signup failed", "error");
+        console.error("❌ [SIGNUP_FLOW] 4c. Failed:", res.error);
+        showToast(res.error || "Signup failed. Please check your details.", "error");
         setLoading(false);
       }
     } catch (err: any) {
-      console.error("Signup crash:", err);
-      showToast(err.message || "An unexpected error occurred", "error");
+      console.error("💥 [SIGNUP_FLOW] CRITICAL ERROR:", err);
+      showToast("A system error occurred. Checking connection...", "error");
       setLoading(false);
     }
   };
@@ -115,7 +110,6 @@ export default function SignupPage() {
                   placeholder="Priya Sharma" 
                   value={form.name} 
                   onChange={(e) => setForm({ ...form, name: e.target.value })} 
-                  required 
                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
                 />
               </div>
@@ -127,7 +121,6 @@ export default function SignupPage() {
                   placeholder="priya@example.com" 
                   value={form.email} 
                   onChange={(e) => setForm({ ...form, email: e.target.value })} 
-                  required 
                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
                 />
               </div>
@@ -138,7 +131,6 @@ export default function SignupPage() {
                   placeholder="+91 98765 43210" 
                   value={form.phone} 
                   onChange={(e) => setForm({ ...form, phone: e.target.value })} 
-                  required 
                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm placeholder:text-cream/10 focus:outline-none focus:border-gold/40 focus:bg-white/[0.05] transition-all duration-300" 
                 />
               </div>
