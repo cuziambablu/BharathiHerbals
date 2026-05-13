@@ -6,11 +6,6 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
 import CartDrawer from "@/components/CartDrawer";
-import Preloader from "@/components/Preloader";
-import CustomCursor from "@/components/CustomCursor";
-import RitualConcierge from "@/components/RitualConcierge";
-import SmoothScrollProvider from "@/components/SmoothScrollProvider";
-import PageTransition from "@/components/PageTransition";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -28,7 +23,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "BHARATHI | Luxury Herbal Elixirs",
-  description: "Experience the ultimate in Ayurvedic hair and skin care with Bharathi. Traditionally crafted, scientifically refined.",
+  description: "Experience the ultimate in Ayurvedic hair and skin care with Bharathi.",
 };
 
 export default function RootLayout({
@@ -38,22 +33,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${cormorant.variable} ${poppins.variable} font-sans bg-[#0a1810] text-cream antialiased selection:bg-gold/30 selection:text-white`}>
+      <body className={`${cormorant.variable} ${poppins.variable} font-sans bg-[#0a1810] text-cream antialiased`}>
         <AuthProvider>
           <ToastProvider>
             <CartProvider>
               <WishlistProvider>
-                <SmoothScrollProvider>
-                  <Preloader />
-                  <CustomCursor />
-                  <RitualConcierge />
-                  <PageTransition>
-                    <div className="relative z-10">
-                      {children}
-                    </div>
-                  </PageTransition>
-                  <CartDrawer />
-                </SmoothScrollProvider>
+                {/* 
+                  Simplified Layout: Removed experimental components 
+                  that were blocking interactions (SmoothScroll, Preloader, etc.)
+                */}
+                <div className="relative min-h-screen">
+                  {children}
+                </div>
+                <CartDrawer />
               </WishlistProvider>
             </CartProvider>
           </ToastProvider>
