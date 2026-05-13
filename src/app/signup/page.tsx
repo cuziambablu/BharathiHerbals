@@ -27,8 +27,8 @@ export default function SignupPage() {
     }
   }, [isLoggedIn, router]);
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignup = async (e?: any) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (loading) return;
 
     // VALIDATION
@@ -78,7 +78,7 @@ export default function SignupPage() {
             <p className="font-poppins text-cream/40 text-xs tracking-widest uppercase">Create your heritage account</p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-5">
+          <div className="space-y-5">
             <div className="space-y-4">
               <input 
                 placeholder="Full Name" 
@@ -116,13 +116,17 @@ export default function SignupPage() {
             </div>
 
             <button 
-              type="submit" 
+              type="button" 
+              onClick={() => {
+                window.alert("BUTTON CLICKED! Starting Signup...");
+                handleSignup();
+              }}
               disabled={loading} 
               className="w-full py-4 bg-red-600 text-white font-poppins font-bold text-xs tracking-[0.2em] uppercase rounded-xl hover:bg-red-700 transition-all disabled:opacity-50"
             >
-              {loading ? "Processing..." : "Create Account (NEW VERSION)"}
+              {loading ? "Processing..." : "Create Account (FORCE CLICK)"}
             </button>
-          </form>
+          </div>
 
           <p className="mt-8 text-center font-poppins text-[10px] text-cream/30 tracking-widest uppercase">
             Already have an account?{" "}
