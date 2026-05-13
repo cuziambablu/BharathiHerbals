@@ -1,25 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import { useToast } from "@/context/ToastContext";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const { login, isLoggedIn } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const supabase = createClient();
   
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
+  // Check if already logged in
   useEffect(() => {
-    if (isLoggedIn) {
-      router.replace("/account");
-    }
-  }, [isLoggedIn, router]);
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) router.replace("/account");
+    };
+    checkUser();
+  }, [router, supabase]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,30 +34,33 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    console.log("🚀 EMERGENCY AUTH: Starting direct login for", form.email);
     
-    // DEADMAN'S SWITCH: If the UI hangs for 4 seconds, force the move.
-    // The logs show the database ALWAYS finishes, so we can safely force this.
-    const deadmanTimer = setTimeout(() => {
-      console.log("⏰ Deadman's switch triggered - moving to account");
-      window.location.href = "/account";
-    }, 4000);
-
     try {
-      console.log("🚀 AUTH: Login request started");
-      const res = await login(form.email, form.password);
-      
-      clearTimeout(deadmanTimer);
-      
-      if (res.success) {
-        showToast("Welcome back!", "success");
-        // HARD REDIRECT to ensure session cookies sync
-        window.location.href = "/account";
-      } else {
-        showToast(res.error || "Login failed", "error");
+      // DIRECT LOGIN - Bypassing AuthContext for maximum stability
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password
+      });
+
+      if (error) {
+        console.error("❌ Login failed:", error.message);
+        showToast(error.message, "error");
         setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        console.log("✅ Login successful! Forcing redirect...");
+        showToast("Welcome back!", "success");
+        
+        // NUCLEAR OPTION: Wait 500ms for cookies, then force refresh
+        setTimeout(() => {
+          window.location.href = "/account";
+        }, 500);
       }
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("💥 Critical login crash:", err);
       showToast("A connection error occurred", "error");
       setLoading(false);
     }
@@ -77,7 +83,6 @@ export default function LoginPage() {
             <div className="space-y-4">
               <input 
                 type="email"
-                autoComplete="email"
                 placeholder="Email Address" 
                 value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })} 
@@ -85,7 +90,6 @@ export default function LoginPage() {
               />
               <input 
                 type="password"
-                autoComplete="current-password"
                 placeholder="Password" 
                 value={form.password} 
                 onChange={(e) => setForm({ ...form, password: e.target.value })} 
@@ -98,7 +102,7 @@ export default function LoginPage() {
               disabled={loading} 
               className="w-full py-5 bg-gold text-[#0a1810] font-poppins font-bold text-[10px] tracking-[0.3em] uppercase rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 shadow-xl shadow-gold/10"
             >
-              {loading ? "Establishing Connection..." : "Sign In"}
+              {loading ? "Establishing Ritual..." : "Sign In"}
             </button>
           </form>
 
@@ -108,7 +112,7 @@ export default function LoginPage() {
           </p>
 
           <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
-            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">System v2.0 - Active</p>
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold italic">System v3.0 - Direct Auth Active</p>
           </div>
         </div>
       </div>

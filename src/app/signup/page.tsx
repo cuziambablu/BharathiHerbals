@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import { useToast } from "@/context/ToastContext";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
 export default function SignupPage() {
-  const { signup, isLoggedIn } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const supabase = createClient();
   
   const [form, setForm] = useState({ 
     name: "", 
@@ -22,10 +22,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      router.replace("/account");
-    }
-  }, [isLoggedIn, router]);
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) router.replace("/account");
+    };
+    checkUser();
+  }, [router, supabase]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,25 +44,41 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+    console.log("🚀 EMERGENCY AUTH: Starting direct signup for", form.email);
     
     try {
-      console.log("🚀 AUTH: Signup request started");
-      const res = await signup(form);
-      
-      if (res.success) {
-        showToast("Account created successfully!", "success");
-        if (res.confirmationRequired) {
-          router.push("/login?confirmed=false");
-        } else {
-          // HARD REDIRECT to ensure session cookies sync
-          window.location.href = "/account";
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { 
+          data: { 
+            full_name: form.name,
+            phone: form.phone
+          } 
         }
-      } else {
-        showToast(res.error || "Signup failed", "error");
+      });
+  
+      if (error) {
+        console.error("❌ Signup failed:", error.message);
+        showToast(error.message, "error");
         setLoading(false);
+        return;
+      }
+
+      showToast("Account created successfully!", "success");
+      
+      if (!authData.session) {
+        // Confirmation required
+        router.push("/login?confirmed=false");
+      } else {
+        console.log("✅ Signup successful! Forcing redirect...");
+        // HARD REDIRECT
+        setTimeout(() => {
+          window.location.href = "/account";
+        }, 800);
       }
     } catch (err: any) {
-      console.error("Signup error:", err);
+      console.error("💥 Critical signup crash:", err);
       showToast("A connection error occurred", "error");
       setLoading(false);
     }
@@ -83,14 +101,12 @@ export default function SignupPage() {
             <div className="space-y-4">
               <input 
                 placeholder="Full Name" 
-                autoComplete="name"
                 value={form.name} 
                 onChange={(e) => setForm({ ...form, name: e.target.value })} 
                 className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-cream font-poppins text-sm focus:border-gold/40 focus:outline-none transition-all placeholder:text-cream/20" 
               />
               <input 
                 type="email"
-                autoComplete="email"
                 placeholder="Email Address" 
                 value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })} 
@@ -98,7 +114,6 @@ export default function SignupPage() {
               />
               <input 
                 type="tel"
-                autoComplete="tel"
                 placeholder="Mobile Number" 
                 value={form.phone} 
                 onChange={(e) => setForm({ ...form, phone: e.target.value })} 
@@ -106,7 +121,6 @@ export default function SignupPage() {
               />
               <input 
                 type="password"
-                autoComplete="new-password"
                 placeholder="Password" 
                 value={form.password} 
                 onChange={(e) => setForm({ ...form, password: e.target.value })} 
@@ -114,7 +128,6 @@ export default function SignupPage() {
               />
               <input 
                 type="password"
-                autoComplete="new-password"
                 placeholder="Confirm Password" 
                 value={form.confirm} 
                 onChange={(e) => setForm({ ...form, confirm: e.target.value })} 
@@ -137,7 +150,7 @@ export default function SignupPage() {
           </p>
 
           <div className="absolute bottom-4 left-0 w-full text-center opacity-20">
-            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold">System v2.0 - Active</p>
+            <p className="text-[8px] text-gold tracking-[0.5em] uppercase font-bold italic">System v3.0 - Direct Auth Active</p>
           </div>
         </div>
       </div>
