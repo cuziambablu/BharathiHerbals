@@ -126,7 +126,7 @@ export default function SignupPage() {
             <p className="font-poppins text-cream/40 text-sm tracking-wide">Join the BHARATHI luxury heritage</p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-4">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-1.5">
                 <label className="font-poppins text-[10px] text-cream/30 tracking-[0.2em] uppercase ml-1">Full Name</label>
@@ -193,14 +193,22 @@ export default function SignupPage() {
 
             <div className="pt-4">
               <button 
-                type="submit" 
+                type="button" 
+                onClick={handleSignup}
                 disabled={loading} 
-                className="w-full py-5 bg-gold text-[#0a1810] font-poppins font-bold text-xs tracking-[0.2em] uppercase rounded-2xl disabled:opacity-50 hover:bg-gold/90 transition-all shadow-xl shadow-gold/10"
+                className="w-full py-5 bg-gold text-[#0a1810] font-poppins font-bold text-xs tracking-[0.2em] uppercase rounded-2xl disabled:opacity-50 hover:bg-gold/90 transition-all shadow-xl shadow-gold/10 relative overflow-hidden"
               >
-                {loading ? "Creating Account..." : "Create Account"}
+                <span className={loading ? "opacity-0" : "opacity-100"}>
+                  Create Account
+                </span>
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-[#0a1810]/20 border-t-[#0a1810] rounded-full animate-spin" />
+                  </div>
+                )}
               </button>
             </div>
-          </form>
+          </div> { /* Replaced form with div to avoid onSubmit interference */ }
 
           <p className="mt-8 text-center font-poppins text-xs text-cream/30 tracking-wide">
             Already have an account?{" "}
