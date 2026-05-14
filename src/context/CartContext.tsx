@@ -82,11 +82,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated, user]);
 
-  const openCart = useCallback(() => {
-    setIsOpen(false); // Force reset to trigger animation
-    setTimeout(() => setIsOpen(true), 10);
-  }, []);
-  
+  const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
   const toggleCart = useCallback(() => setIsOpen((p) => !p), []);
 
@@ -116,9 +112,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    // Force open
-    setIsOpen(false);
-    setTimeout(() => setIsOpen(true), 50);
+    setIsOpen(true);
   }, [user]);
 
   const removeFromCart = useCallback(async (productId: string, size: string) => {
