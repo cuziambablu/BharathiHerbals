@@ -34,8 +34,16 @@ export function AdminRoute({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, isAdmin, loading, router]);
 
-  if (loading || !isLoggedIn || !isAdmin) return (
+  if (loading) return (
     <div className="min-h-screen bg-[#0a1810] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!isLoggedIn || !isAdmin) return (
+    <div className="min-h-screen bg-[#0a1810] flex flex-col items-center justify-center p-6 text-center">
+      <h2 className="font-cormorant text-3xl text-cream mb-4 italic">Unauthorized Access</h2>
+      <p className="font-poppins text-xs text-cream/40 mb-8 uppercase tracking-widest">Redirecting to home...</p>
       <div className="w-6 h-6 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
     </div>
   );

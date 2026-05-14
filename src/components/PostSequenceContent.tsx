@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import Link from "next/link";
 import { productData } from "@/data/product";
 
 /* ─── Reusable animated section wrapper ─── */
@@ -272,9 +273,11 @@ export default function PostSequenceContent() {
               {productData.price}
             </p>
             <div className="mt-12">
-              <button className="px-12 py-4 bg-cream text-forest font-sans font-bold tracking-widest text-lg hover:bg-gold hover:text-forest transition-all duration-500 shadow-[0_0_40px_rgba(200,169,107,0.3)]">
-                SHOP NOW
-              </button>
+              <Link href="/product">
+                <button className="px-12 py-4 bg-cream text-forest font-sans font-bold tracking-widest text-lg hover:bg-gold hover:text-forest transition-all duration-500 shadow-[0_0_40px_rgba(200,169,107,0.3)]">
+                  SHOP NOW
+                </button>
+              </Link>
             </div>
           </RevealSection>
         </div>

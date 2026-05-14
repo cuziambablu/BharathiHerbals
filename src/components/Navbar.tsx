@@ -47,10 +47,10 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-12">
-            {["Home", "Shop", "Account", "Admin"].map((item) => (
+            {["Home", "Products", "Account", "Admin"].map((item) => (
               <Link 
                 key={item} 
-                href={item === "Home" ? "/" : `/${item.toLowerCase()}`}
+                href={item === "Home" ? "/" : item === "Products" ? "/product" : `/${item.toLowerCase()}`}
                 className="relative group font-poppins text-[10px] tracking-[0.3em] text-cream/40 hover:text-cream transition-all uppercase"
               >
                 {item}
@@ -140,10 +140,10 @@ export default function Navbar() {
               className="lg:hidden mt-4 overflow-hidden"
             >
               <div className="bg-[#0a1810]/95 backdrop-blur-3xl border border-white/10 rounded-3xl px-8 py-10 space-y-6">
-                {["Home", "Shop", "Account", "Admin"].map((item) => (
+                {["Home", "Products", "Account", "Admin"].map((item) => (
                   <Link 
                     key={item} 
-                    href={item === "Home" ? "/" : `/${item.toLowerCase()}`}
+                    href={item === "Home" ? "/" : item === "Products" ? "/product" : `/${item.toLowerCase()}`}
                     onClick={() => setMenuOpen(false)}
                     className="block font-cormorant text-4xl text-cream italic"
                   >
