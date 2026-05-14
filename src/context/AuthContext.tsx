@@ -241,13 +241,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addOrder = async (orderData: any) => {
     if (!user) return { success: false, error: "Not logged in" };
-    const { data, error } = await supabase.from('orders').insert({
-      user_id: user.id, total_amount: orderData.total, payment_method: orderData.paymentMethod,
-      payment_status: 'success', order_status: 'ordered', shipping_address: orderData.address,
-      customer_name: user.name, customer_email: user.email, customer_phone: user.phone
-    }).select().single();
-    if (error) return { success: false, error: error.message };
-    return { success: true, id: data.id };
+    
+    try {
+      const { data: order, error: orderError } = await supabase.from('orders').insert({
+        user_id: user.id, 
+        total_amount: orderData.total, 
+        payment_method: orderData.paymentMethod,
+        payment_status: orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'success', 
+        order_status: 'ordered', 
+        shipping_address: orderData.address,
+        customer_name: user.name, 
+        customer_email: user.email, 
+        customer_phone: user.phone
+      }).select().single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = orderData.items.map((item: any) => ({
+        order_id: order.id,
+        product_name: item.name,
+        quantity: item.qty,
+        price: item.price,
+        bottle_size: item.size
+      }));
+
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+      if (itemsError) throw itemsError;
+
+      // Decrement Stock
+      for (const item of orderData.items) {
+        const { data: p } = await supabase.from('products').select('stock').eq('id', item.productId).single();
+        if (p) await supabase.from('products').update({ stock: Math.max(0, p.stock - item.qty) }).eq('id', item.productId);
+      }
+
+      const newOrder: Order = {
+        id: order.id,
+        date: order.created_at,
+        items: orderData.items,
+        total: orderData.total,
+        status: 'ordered',
+        paymentMethod: orderData.paymentMethod,
+        paymentStatus: orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'success',
+        address: orderData.address,
+        customerName: user.name
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+      if (user.role === 'admin') setAllOrders(prev => [newOrder, ...prev]);
+
+      return { success: true, id: order.id };
+    } catch (err: any) {
+      console.error("Order creation failed:", err);
+      return { success: false, error: err.message };
+    }
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {

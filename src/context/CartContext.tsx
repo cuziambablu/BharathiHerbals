@@ -39,41 +39,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadCart = async () => {
       let currentItems: CartItem[] = [];
+      
+      // ALWAYS start with localStorage as a fast fallback
+      try {
+        const saved = localStorage.getItem("bharathi-cart");
+        if (saved) currentItems = JSON.parse(saved);
+      } catch (e) {}
 
       if (user) {
-        // Fetch from Supabase
+        console.log("🛒 [CART] Syncing with Supabase for:", user.email);
         const { data, error } = await supabase
           .from('cart')
-          .select('*, products(product_name, image_urls, price, discount_price)')
+          .select('*, product:products(*)') // Resilient join
           .eq('user_id', user.id);
 
-        if (!error && data) {
-          currentItems = data.map((item: any) => ({
-            productId: item.product_id,
-            name: item.products.product_name,
-            size: item.bottle_size,
-            price: Number(item.products.price),
-            quantity: item.quantity,
-            image: item.products.image_urls[0] || ''
-          }));
+        if (!error && data && data.length > 0) {
+          const dbItems = data
+            .filter((item: any) => item.product)
+            .map((item: any) => ({
+              productId: item.product_id,
+              name: item.product.product_name,
+              size: item.bottle_size,
+              price: Number(item.product.price),
+              quantity: item.quantity,
+              image: (item.product.image_urls && item.product.image_urls[0]) || ''
+            }));
+          
+          if (dbItems.length > 0) currentItems = dbItems;
         }
-      } else {
-        try {
-          const saved = localStorage.getItem("bharathi-cart");
-          if (saved) {
-            currentItems = JSON.parse(saved);
-            // VALIDATE PRICES against current data
-            // Since we only have one product for now, we can hardcode or fetch
-            // Let's at least ensure the Herbal Oil is 199
-            currentItems = currentItems.map((item: CartItem) => {
-              if (item.productId === 'bharathi-herbal-oil' || item.name.includes('Herbal Hair Oil')) {
-                return { ...item, price: 199 };
-              }
-              return item;
-            });
-          }
-        } catch {}
       }
+      
       setItems(currentItems);
       setHydrated(true);
     };
@@ -87,7 +82,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated, user]);
 
-  const openCart = useCallback(() => setIsOpen(true), []);
+  const openCart = useCallback(() => {
+    setIsOpen(false); // Force reset to trigger animation
+    setTimeout(() => setIsOpen(true), 10);
+  }, []);
+  
   const closeCart = useCallback(() => setIsOpen(false), []);
   const toggleCart = useCallback(() => setIsOpen((p) => !p), []);
 
@@ -107,34 +106,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
 
     if (user) {
-      // Sync with Supabase
-      const { data: existing } = await supabase
-        .from('cart')
-        .select('quantity')
-        .eq('user_id', user.id)
-        .eq('product_id', item.productId)
-        .eq('bottle_size', item.size)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('cart')
-          .update({ quantity: existing.quantity + qty })
-          .eq('user_id', user.id)
-          .eq('product_id', item.productId)
-          .eq('bottle_size', item.size);
-      } else {
-        await supabase
-          .from('cart')
-          .insert({
-            user_id: user.id,
-            product_id: item.productId,
-            quantity: qty,
-            bottle_size: item.size
-          });
-      }
+      // Background sync
+      supabase.from('cart').select('quantity').eq('user_id', user.id).eq('product_id', item.productId).eq('bottle_size', item.size).single().then(({ data: existing }) => {
+        if (existing) {
+          supabase.from('cart').update({ quantity: existing.quantity + qty }).eq('user_id', user.id).eq('product_id', item.productId).eq('bottle_size', item.size).then();
+        } else {
+          supabase.from('cart').insert({ user_id: user.id, product_id: item.productId, quantity: qty, bottle_size: item.size }).then();
+        }
+      });
     }
-    setIsOpen(true);
+
+    // Force open
+    setIsOpen(false);
+    setTimeout(() => setIsOpen(true), 50);
   }, [user]);
 
   const removeFromCart = useCallback(async (productId: string, size: string) => {

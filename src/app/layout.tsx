@@ -5,6 +5,7 @@ import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
+import CartDrawer from "@/components/CartDrawer";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
               <WishlistProvider>
                 <div className="relative min-h-screen">
                   {children}
+                  <CartDrawer />
                 </div>
               </WishlistProvider>
             </CartProvider>

@@ -112,10 +112,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || (window as any).NEXT_PUBLIC_RAZORPAY_KEY_ID;
       if (!razorpayKey) {
-        console.error("NEXT_PUBLIC_RAZORPAY_KEY_ID is missing!");
-        showToast("Payment configuration missing. Please check .env.local", "error");
+        console.error("Razorpay Key ID is missing!");
+        showToast("Payment gateway is initializing. Please try again in a moment.", "error");
         setLoading(false);
         return;
       }
