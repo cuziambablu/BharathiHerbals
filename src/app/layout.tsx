@@ -6,6 +6,7 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
 import CartDrawer from "@/components/CartDrawer";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -41,6 +42,7 @@ export default function RootLayout({
                 <div className="relative min-h-screen">
                   {children}
                   <CartDrawer />
+                  <SpeedInsights />
                 </div>
               </WishlistProvider>
             </CartProvider>
