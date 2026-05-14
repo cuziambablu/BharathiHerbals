@@ -103,7 +103,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (user) {
       // Background sync
-      supabase.from('cart').select('quantity').eq('user_id', user.id).eq('product_id', item.productId).eq('bottle_size', item.size).single().then(({ data: existing }) => {
+      supabase.from('cart').select('quantity').eq('user_id', user.id).eq('product_id', item.productId).eq('bottle_size', item.size).single().then(({ data: existing }: any) => {
         if (existing) {
           supabase.from('cart').update({ quantity: existing.quantity + qty }).eq('user_id', user.id).eq('product_id', item.productId).eq('bottle_size', item.size).then();
         } else {
